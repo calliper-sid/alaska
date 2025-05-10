@@ -4,13 +4,16 @@ import Navbar from '../components/Navbar';
 import CodeEditor from '../components/CodeEditor';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { Terminal, Clock, Send, Award, BarChart2 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { generateQuestion as generateAIQuestion, evaluateCode, analyzeComplexity } from '../lib/ai';
+import { Terminal, Clock, Send, Award, BarChart2, ArrowLeft, Code, Brain, CheckCircle, XCircle } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { generateQuestion as generateAIQuestion } from '../lib/ai';
+import { evaluateCode, analyzeComplexity } from '../lib/codeEvaluator';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Route } from 'react-router-dom';
 import TopicSolvePage from './TopicSolvePage';
+import CodeAnalysis from '../components/CodeAnalysis';
+import { toast } from 'react-hot-toast';
 
 const AIMocktestPage = () => {
   const location = useLocation();
@@ -39,6 +42,14 @@ const AIMocktestPage = () => {
   const [codeResult, setCodeResult] = useState(null);
   const [timeComplexity, setTimeComplexity] = useState(null);
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // Define complexityData for the chart
+  const complexityData = [
+    { name: 'Your Solution', value: timeComplexity?.value || 0, complexity: timeComplexity?.complexity || 'O(n)', color: '#8884d8' },
+    { name: 'Optimal', value: 1, complexity: 'O(n)', color: '#82ca9d' }
+  ];
   
   // Sample default code templates for different languages
   const defaultCodes = {
@@ -130,30 +141,19 @@ public class Solution {
     }
   };
 
-  const runCode = async () => {
+  const handleRunCode = async () => {
     try {
-      setIsLoading(true);
-      
-      // Evaluate the code
-      const evaluation = await evaluateCode(code, language, question?.title);
-      setCodeResult({
-        output: evaluation.output,
-        error: evaluation.passed ? null : 'Failed test cases',
-        passed: evaluation.passed
-      });
-      
-      // Analyze time complexity
-      const complexity = await analyzeComplexity(code, language);
-      setTimeComplexity(complexity);
-      
-    } catch (error) {
-      showToast('Failed to evaluate code', 'error');
+      setLoading(true);
+      const evaluation = await evaluateCode(code, language, question.testCases);
+      setCodeResult(evaluation);
+      setTimeComplexity(evaluation.analysis.timeComplexity);
+      setShowAnalysis(true);
+    } catch (err) {
+      toast.error('Failed to evaluate code');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
-
-  const handleRun = () => setShowAnalysis(true);
 
   const handleNext = () => {
     setShowAnalysis(false);
@@ -161,7 +161,60 @@ public class Solution {
     setCode('');
     setCodeResult(null);
     setTimeComplexity(null);
+    loadQuestion();
   };
+
+  useEffect(() => {
+    loadQuestion();
+  }, []);
+
+  const loadQuestion = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const newQuestion = await generateAIQuestion(language, topic, difficulty);
+      setQuestion(newQuestion);
+      setCode(newQuestion.codeTemplate || '');
+      setCodeResult(null);
+      setTimeComplexity(null);
+    } catch (err) {
+      setError('Failed to generate question. Please try again.');
+      toast.error('Failed to generate question');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading && !question) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white p-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 bg-gray-700 rounded w-1/4"></div>
+            <div className="h-4 bg-gray-700 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-700 rounded w-1/2"></div>
+            <div className="h-96 bg-gray-700 rounded"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white p-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-red-400 mb-4">{error}</div>
+          <button
+            onClick={loadQuestion}
+            className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
@@ -265,9 +318,9 @@ public class Solution {
                   code={code}
                   setCode={setCode}
                   language={language}
-                  onRun={runCode}
+                  onRun={handleRunCode}
                   result={codeResult}
-                  isLoading={isLoading}
+                  isLoading={loading}
                 />
               </div>
               {timeComplexity && (
@@ -307,7 +360,7 @@ public class Solution {
                     </ResponsiveContainer>
                   </div>
                   
-                  {codeResult && codeResult.passed && (
+                  {codeResult && codeResult.evaluation.passed && (
                     <div className="mt-4 bg-green-900 p-3 rounded-md flex items-center text-green-300">
                       <Award className="mr-2" />
                       <span>Your solution passed all test cases with optimal time complexity!</span>
@@ -319,6 +372,14 @@ public class Solution {
           </div>
         )}
       </main>
+
+      {showAnalysis && (
+        <CodeAnalysis
+          evaluation={codeResult}
+          complexity={timeComplexity}
+          onClose={() => setShowAnalysis(false)}
+        />
+      )}
     </div>
   );
 };
