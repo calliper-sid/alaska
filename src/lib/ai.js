@@ -2,6 +2,7 @@
 // In a real app, this would use the Gemini API or similar
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getCodeTemplate } from './codeTemplates';
 
 // Initialize the Gemini AI model
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
@@ -55,11 +56,7 @@ export const generateQuestion = async (language, topic, difficulty = "Easy") => 
         - Input size limits
         - Any other important constraints",
       "timeComplexity": "Expected time complexity with explanation",
-      "code_template": "A starter code template in ${language} with:
-        - Function/method signature
-        - Basic structure
-        - Comments explaining the approach
-        - Test cases setup"
+      "questionType": "The type of question (array, string, tree, etc.)"
     }`;
 
     const result = await retryOperation(async () => {
@@ -77,16 +74,31 @@ export const generateQuestion = async (language, topic, difficulty = "Easy") => 
 
     const text = result.response.text();
     
-    // Clean the response text to handle markdown formatting
-    const cleanText = text.replace(/```json\n?|\n?```/g, '').trim();
+    // Clean the response text to handle markdown formatting and escape special characters
+    const cleanText = text
+      .replace(/```json\n?|\n?```/g, '') // Remove markdown code blocks
+      .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
+      .replace(/\\([^"\\\/bfnrtu])/g, '$1') // Fix escaped characters
+      .trim();
     
-    // Parse and validate the response
-    const question = JSON.parse(cleanText);
-    if (!question.title || !question.description || !question.code_template) {
-      throw new Error('Invalid question format received from AI');
+    try {
+      // Parse and validate the response
+      const question = JSON.parse(cleanText);
+      
+      // Validate required fields
+      if (!question.title || !question.description || !question.questionType) {
+        throw new Error('Invalid question format: Missing required fields');
+      }
+      
+      // Add the code template based on language and question type
+      question.code_template = getCodeTemplate(language, question.questionType);
+      
+      return question;
+    } catch (parseError) {
+      console.error('JSON Parse Error:', parseError);
+      console.error('Cleaned Text:', cleanText);
+      throw new Error('Failed to parse AI response: Invalid JSON format');
     }
-    
-    return question;
   } catch (error) {
     console.error('Error generating question:', error);
     throw new Error('Failed to generate question: ' + error.message);

@@ -10,14 +10,14 @@ const DashboardPage = () => {
   
   // Sample data - in a real app, this would come from an API/Supabase
   const [topics, setTopics] = useState([
-    { id: 1, title: 'Arrays', difficulty: 'Easy', questions: 42, icon: '📊' },
-    { id: 2, title: 'Linked Lists', difficulty: 'Medium', questions: 28, icon: '🔗' },
-    { id: 3, title: 'Trees', difficulty: 'Hard', questions: 35, icon: '🌳' },
-    { id: 4, title: 'Graphs', difficulty: 'Hard', questions: 23, icon: '📈' },
-    { id: 5, title: 'Dynamic Programming', difficulty: 'Hard', questions: 31, icon: '🧮' },
-    { id: 6, title: 'Sorting', difficulty: 'Medium', questions: 19, icon: '📋' },
-    { id: 7, title: 'Searching', difficulty: 'Easy', questions: 15, icon: '🔍' },
-    { id: 8, title: 'Greedy Algorithms', difficulty: 'Medium', questions: 22, icon: '🤑' },
+    { id: 1, title: 'Arrays', difficulty: 'Easy', questions: 42 },
+    { id: 2, title: 'Linked Lists', difficulty: 'Medium', questions: 28 },
+    { id: 3, title: 'Trees', difficulty: 'Hard', questions: 35 },
+    { id: 4, title: 'Graphs', difficulty: 'Hard', questions: 23 },
+    { id: 5, title: 'Dynamic Programming', difficulty: 'Hard', questions: 31 },
+    { id: 6, title: 'Sorting', difficulty: 'Medium', questions: 19 },
+    { id: 7, title: 'Searching', difficulty: 'Easy', questions: 15 },
+    { id: 8, title: 'Greedy Algorithms', difficulty: 'Medium', questions: 22 },
   ]);
   
   const filteredTopics = topics.filter(topic => 
@@ -94,7 +94,6 @@ const DashboardPage = () => {
             {filteredTopics.map(topic => (
               <div key={topic.id} className="card hover:bg-gray-750 transition-all duration-200 group">
                 <div className="flex justify-between items-start mb-4">
-                  <div className="text-3xl">{topic.icon}</div>
                   <span className={`${getDifficultyColor(topic.difficulty)} text-xs font-medium px-2.5 py-0.5 rounded`}>
                     {topic.difficulty}
                   </span>

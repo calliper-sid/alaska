@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { vscodeDark } from '@uiw/codemirror-theme-vscode';
 import { cpp } from '@codemirror/lang-cpp';
@@ -6,6 +6,7 @@ import { java } from '@codemirror/lang-java';
 import { javascript } from '@codemirror/lang-javascript';
 import { Play, Clock, RotateCcw, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { getCodeTemplate } from '../lib/codeTemplates';
 
 const CodeEditor = ({ 
   code, 
@@ -13,10 +14,27 @@ const CodeEditor = ({
   language = 'cpp', 
   onRun, 
   result = null, 
-  isLoading = false 
+  isLoading = false,
+  questionType = 'array' // Default to array type
 }) => {
   const [timeComplexity, setTimeComplexity] = useState('O(n)'); // Example default
   const navigate = useNavigate();
+  
+  // Update code template when language or question type changes
+  useEffect(() => {
+    try {
+      if (!code && setCode) {
+        const template = getCodeTemplate(language, questionType);
+        if (!template) {
+          console.warn(`No template found for language: ${language} and type: ${questionType}`);
+          return;
+        }
+        setCode(template);
+      }
+    } catch (error) {
+      console.error('Error loading code template:', error);
+    }
+  }, [language, questionType, setCode]); // Removed code from dependencies to prevent infinite loop
   
   const getLanguageExtension = (lang) => {
     switch (lang.toLowerCase()) {
@@ -52,6 +70,11 @@ const CodeEditor = ({
     });
   };
 
+  const handleReset = () => {
+    const template = getCodeTemplate(language, questionType);
+    setCode(template);
+  };
+
   const renderComplexityBadge = () => {
     const complexityMap = {
       'O(1)': 'bg-green-500',
@@ -83,15 +106,6 @@ const CodeEditor = ({
             <span className="text-sm mr-2">Time Complexity:</span>
             {renderComplexityBadge()}
           </div>
-          <select 
-            className="select-field text-sm py-1 px-2 max-w-[100px]"
-            value={language}
-            onChange={(e) => console.log(e.target.value)}
-          >
-            <option value="cpp">C++</option>
-            <option value="c">C</option>
-            <option value="java">Java</option>
-          </select>
         </div>
       </div>
       
@@ -136,7 +150,7 @@ const CodeEditor = ({
         
         <button 
           className="btn-secondary flex items-center"
-          onClick={() => setCode('')}
+          onClick={handleReset}
         >
           <RotateCcw size={16} className="mr-2" />
           Reset

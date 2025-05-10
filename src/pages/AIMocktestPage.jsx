@@ -157,7 +157,10 @@ public class Solution {
 
   const handleNext = () => {
     setShowAnalysis(false);
-    setCode(questions[(questionIndex + 1) % questions.length].starterCode);
+    setQuestion(null);
+    setCode('');
+    setCodeResult(null);
+    setTimeComplexity(null);
   };
 
   return (
